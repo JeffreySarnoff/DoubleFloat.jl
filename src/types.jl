@@ -32,6 +32,10 @@ for (S,T) in ((:Double128, :Float128), (:Double64, :Float64),
   end
 end
 
+function Double128(x::F) where {F<:Floats}
+    Double128((Float128(x), zero(Float128)))
+end
+
 function Double64(x::Float128)
      hi = Float64(x)
      lo = Float64(x-hi)
