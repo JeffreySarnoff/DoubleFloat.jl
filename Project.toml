@@ -3,11 +3,11 @@ author = "Jeffrey Sarnoff <jeffrey.sarnoff@gmail.com>"
 uuid = "a933741b-d624-4092-8a70-e80e480b05c1"
 version = "0.1.0"
 
-[compat]
+[deps]
 Quadmath = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
 ErrorfreeArithmetic = "90fa49ef-747e-5e6f-a989-263ba693cf1a"
 
-[deps]
+[compat]
 Quadmath = "0.5 - 0.9"
 ErrorfreeArithmetic = "0.5 - 0.9"
 julia = "1.11"

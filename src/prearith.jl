@@ -1,28 +1,63 @@
-import Base: signbit, abs, copysign, flipsign, frexp, ldexp
+import Base: -, signbit, sign, abs, copysign, flipsign, frexp, ldexp,
+             exponent, significand
 
-for (Struct, Fn, T) in ((:DF128, :Double128, :Float128), 
-                        (:DF64,  :Double64, :Float64), 
-                        (:DF32,  :Double32, :Float32), 
-                        (:DF16,  :Double16, :Float16))
+for T in DoubleSyms
   @eval begin
-    negabs(x::$T) = -abs(x)
-    
-    Base.signbit(x::$Struct) = signbit(hi(x))
-    Base.abs(x::$Struct) = !signbit(hi(x)) ? x : $Struct(-hi(x), -lo(x))
-    negabs(x::$Struct) = signbit(hi(x)) ? x : $Struct(-hi(x), -lo(x))
-    
-    Base.copysign(x::$Struct, y::$T) = signbit(hi(x)) === signbit(y) ? x : $Struct(-hi(x), -lo(x))
-    Base.copysign(x::$Struct, y::$Struct) = signbit(hi(x)) === signbit(hi(y)) ? x : $Struct(-hi(x), -lo(x))
-    
-    Base.flipsign(x::$Struct, y::$T) = signbit(y) ? $Struct(-hi(x), -lo(x)) : x
-    Base.flipsign(x::$Struct, y::$Struct) = signbit(hi(y)) ? $Struct(-hi(x), -lo(x)) : x
-  end
 
-  @eval begin
-    Base.frexp(x::$Struct) = (frexp(hi(x)), frexp(lo(x)))
-    Base.ldexp(x::NTuple{2,$T}, y::NTuple{2,$T}) = (ldexp(x...), ldexp(y...))
-    Base.ldexp(x::NTuple{2, NTuple{2,$T}}) = (ldexp(x[1]...), ldexp(x[2]...))
-  end
+    @inline Base.signbit(x::$T) = signbit(hi(x))
 
+    @inline Base.sign(x::$T) = sign(hi(x))
+
+    """
+        negate(x)
+    
+    negate the value of x
+    """
+    @inline negate(x::$T) = $T((-hi(x), -lo(x)))
+
+    @inline (-)(x::$T) = $T((-hi(x), -lo(x)))
+
+    @inline function Base.abs(x::$T)
+        (!signbit(x) && return x) || $T(map(-, hilo(x)))
+    end
+
+    """
+        negabs(x)
+    
+    negate the absolute value of x
+    """
+    @inline function negabs(x::$T)
+        (signbit(x) && return x) || $T(map(-, hilo(x)))
+    end
+
+    @inline Base.exponent(x::$T) = (exponent(hi(x)), exponent(lo(x)))
+
+    @inline Base.significand(x::$T) = (significand(hi(x)), significand(lo(x)))
+
+    @inline signs(x::$T) = (sign(hi(x)), sign(lo(x)))
+  end
 end
 
+@inline Base.frexp(x::F) where {F<:AbstractDoubleFloat} = (Base.frexp(x.hi), Base.frexp(x.lo))
+
+@inline Base.ldexp(hilo::Tuple{Tuple{F, Int}, Tuple{F, Int}}) where {F<:AbstractFloat} = Double(ldexp(hilo[1][1], hilo[1][2]), ldexp(hilo[2][1], hilo[2][2]))
+
+@inline function Base.copysign(x::F, y::T) where {F<:AbstractDoubleFloat, T<:AbstractDoubleFloat}
+    signbit(x) === signbit(y) ? x : negate(x)
+end
+@inline function Base.copysign(x::F, y::T) where {F<:AbstractDoubleFloat, T<:Union{AbstractFloat, Signed}}
+    signbit(x) === signbit(y) ? x : negate(x)
+end
+@inline function Base.copysign(x::F, y::T) where {F<:Union{AbstractFloat, Signed}, T<:AbstractDoubleFloat}
+    signbit(x) === signbit(y) ? x : negate(x)
+end
+
+@inline function Base.flipsign(x::F, y::T) where {F<:AbstractDoubleFloat, T<:AbstractDoubleFloat}
+    signbit(y) ? negate(x) : x
+end
+@inline function Base.flipsign(x::F, y::T) where {F<:AbstractDoubleFloat, T<:Union{AbstractFloat, Signed}}
+    signbit(y) ? negate(x) : x
+end
+@inline function Base.flipsign(x::F, y::T) where {F<:Union{AbstractFloat, Signed}, T<:AbstractDoubleFloat}
+    signbit(y) ? negate(x) : x
+end
